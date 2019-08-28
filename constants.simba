@@ -1,0 +1,39 @@
+// constants
+type
+  TColors = record                           // spotted cow
+    Beef, Bones, CowBlack, CowBrown, Cowhide, CowSpot, Gate, Grange, KharidGate, Tanner: TCTS2Color;
+  end;
+  TPositions = record
+    Bank, Grange, PastureE, PastureW, Tanner: TPoint;
+    GrangeSelect, KharidGate, PastureEGate, PastureEGateOpen, PastureWGate, PastureWGateOpen: Array[0..1] of TPoint;
+  end;
+
+var
+  C: TColors;
+  P: TPositions;
+
+begin
+  C.Beef       := CTS2( 1122975, 1,  0.01, 0.01);
+  C.Bones      := CTS2(10198182, 23, 0.07, 0.12);
+  C.CowBlack   := CTS2( 3160394, 15, 0.09, 0.79);
+  C.CowBrown   := CTS2( 4741229, 18, 0.05, 0.54);
+  C.CowHide    := CTS2(11777213, 9,  0.21, 0.13);
+  C.CowSpot    := CTS2( 1194566, 12, 0.11, 3.48);
+  C.Gate       := CTS2(  342354, 12, 0.09, 1.02);
+  C.Grange     := CTS2(  2236967, 8, 0.01, 0.65);
+  C.KharidGate := CTS2( 7698049, 14, 0.11, 0.13); // color of posts
+  C.Tanner     := CTS2( 2839472, 20, 0.02, 0.75); // 40 - 500 pixels should be OK
+
+  P.Bank     := Point(4890, 3780);
+  P.Grange   := Point(4898, 3728); // ali's kebabs
+  P.PastureE := Point(4822, 3296); // randomize by 15
+  P.PastureW := Point(4614, 3280);
+  P.Tanner   := Point(4906, 3684);
+
+  P.GrangeSelect     := [Point(4894, 3724), Point(4894, 3724)];
+  P.KharidGate       := [Point(4878, 3536), Point(4882, 3540)];
+  P.PastureEGate     := [Point(4821, 3380), Point(4818, 3383)];
+  P.PastureEGateOpen := [Point(4814, 3389), Point(4814, 3385)]; // points for detecting if gate is open
+  P.PastureWGate     := [Point(4598, 3320), Point(4602, 3324)];
+  P.PastureWGateOpen := [Point(4605, 3327), Point(4601, 3327)];
+end;

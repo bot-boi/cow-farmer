@@ -1,0 +1,43 @@
+// checks if pasture gate is open
+function IsGateOpen(positions: Array[0..1] of TPoint): Boolean;
+var
+  atpa: T2DPointArray;
+begin
+  atpa := GetColorsInTiles(positions, C.Gate, 2, [100, 3000], False);
+  if Length(atpa) > 0 then Exit(True);
+end;
+
+// opens pasture gate
+function ClickGate(positions: Array[0..1] of TPoint): Boolean;
+var
+  atpa: T2DPointArray;
+begin
+  atpa := GetColorsInTiles(positions, C.Gate, 2, [200, 3000], True);
+  Result := TryClickATPA(atpa, ['Open Gate'], ONE_SECOND*5);
+end;
+
+// opens kharid gate
+function OpenKharidGate(): Boolean;
+var
+  atpa: T2DPointArray;
+begin
+  atpa := GetColorsInTiles(P.KharidGate, C.KharidGate, 3, [20, 500], True);
+  if (TryRClickATPA(atpa, ['Open Gate'], ONE_SECOND*5)) then begin
+    if ChooseOption.IsOpen() then begin
+      Result := ChooseOption.Select('Pay-toll(10gp)');
+    end;
+  end;
+end;
+
+// opens leather making menu
+function ClickTanner(): Boolean;
+var
+  atpa: T2DPointArray;
+begin
+  atpa := GetColorsInDots([MMDotNPC], C.Tanner, 3, [30, 700], [1,1]);
+  if (TryRClickATPA(atpa, ['Ellis'], ONE_SECOND*5)) then begin
+    if ChooseOption.IsOpen() then begin
+      Result := ChooseOption.Select('Trade Ellis');
+    end;
+  end;
+end;

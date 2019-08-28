@@ -1,0 +1,177 @@
+program cowFarmer;
+
+{$DEFINE DEBUG}
+
+{$include_once Script/script.simba}
+{$include_once Script/extra.simba}
+{$include_once RSItemFinder/itemfinder.simba}
+
+{$include_once constants.simba}
+{$include_once finders.simba}
+
+function TanningBehavior(): Boolean;   // todo: test if tanning interface is open
+var
+  softLeatherBounds: TBox := Box(50, 67, 134, 165);
+  closeInterfaceBounds: Tbox := Box(478, 33, 497, 51);
+begin
+  if Inventory.Count('Cowhide') = 0 then Exit(True);
+  if Script.Walker.GetMyPos().DistanceTo(P.Tanner) > 20 then TravelTo(P.Tanner);
+
+  if ClickTanner() then begin
+    Wait(1500, 3000);
+    HumanMMouse(softLeatherBounds, RandomRange(10, 30));
+    if Mainscreen.IsUpText('Tan') then begin
+      ChooseOption.Open();
+      ChooseOption.Select('Tan All');
+      Wait(250, 1000);
+    end;
+    HumanMMouse(closeInterfaceBounds, RandomRange(10, 30));
+    Mouse.Click(mouse_Left);
+  end;
+end;
+
+function CookingBehavior(): Boolean;      // chatbox.clickbuttoncolor
+  function IsSelectCookAll(): Boolean;    // check if the cook all button is selected
+  var                                     // looks for white, highlighted text in button
+    textColor: TCTS2Color := CTS2(16777215, 1, 0.01, 0.01);
+    bounds: TBox := Box(469, 358, 498, 382);
+    tpa: TPointArray;
+  begin
+    Result := (SRL.FindColors(tpa, textColor, bounds) > 0);
+  end;
+  function SelectCookAll(): Boolean;
+  var
+    bounds: TBox := Box(469, 358, 498, 382);
+  begin
+    HumanMMouse(bounds, RandomRange(10, 30));
+    Mouse.Click(mouse_Left);
+    Wait(150, 350);
+    Result := IsSelectCookAll();
+  end;
+var                                       // need to do my own interface?
+  rawBeefColor:    TCTS2Color := CTS2(1122975, 1, 0.01, 0.01);
+  cookedBeefColor: TCTS2Color := CTS2( 871548, 1, 0.01, 0.01);
+  tpa: TPointArray;
+begin
+  if Inventory.Count('Raw beef') = 0 then Exit(True);
+  if Script.Walker.GetMyPos().DistanceTo(P.Grange) > 12 then TravelTo(P.Grange);
+
+  if not PlayerAnimating() then begin // if player animating, then is cooking
+    if ClickGrange() then begin
+      repeat Wait(200, 400); until not PlayerAnimating();
+      Wait(500, 1500); // wait to make sure menu is opened
+      if not IsSelectCookAll() then SelectCookAll();
+      if (SRL.FindColors(tpa, rawBeefColor, Chatbox.GetBounds()) > 0) then begin
+        Chatbox.ClickButtonColor('What would you like to cook?', rawBeefColor.Color, 1, 'Cook Raw beef', Random(500, 1500));
+      end else if (SRL.FindColors(tpa, cookedBeefColor, Chatbox.GetBounds()) > 0) then begin
+        Chatbox.ClickButtonColor('What would you like to cook?', cookedBeefColor.Color, 1, 'Cook Cooked meat', Random(500, 1500));
+      end;
+    end;
+  end;
+end;
+
+function BankingBehavior(): Boolean;
+var
+  depositItems: TStringArray = ['Leather', 'Cooked meat', 'Burnt meat'];
+  depositItemSlots, temp: TIntArray;
+  item: String;
+  slot: Integer;
+begin
+  if Script.Walker.GetMyPos().DistanceTo(P.Bank) > 12 then TravelTo(P.Bank);
+
+  if not Bankscreen.IsOpen() then Bankscreen.Open(blAlKharid);
+  for item in depositItems do begin
+    temp := Inventory.FindAll(item);
+    if Length(temp) > 0 then begin
+      depositItemSlots.Append(temp[Random(Length(temp))]); // append random element for deposit (using deposit all)
+    end;
+  end;
+  for slot in depositItemSlots do begin
+    Bankscreen.DepositItem(slot, True);
+  end;
+end;
+
+function CowBehavior(): Boolean;
+  // clicks a cow.  doesnt include spotted cows bcus a couple are for milking in east pasture
+  function ClickCow(): Boolean;
+  var
+    atpa: T2DPointArray;
+  begin
+    atpa := GetColorsInDots([MMDotNPC], C.CowBrown, 3, [150, 2000], [1,1]);
+    atpa += GetColorsInDots([MMDotNPC], C.CowBlack, 3, [150, 2000], [1,1]);
+    Result := TryClickATPA(atpa, ['Attack Cow'], ONE_SECOND*3);
+  end;
+
+  function ClickCowhide(): Boolean;
+  var
+    atpa: T2DPointArray;
+  begin
+    atpa := GetColorsInDots([MMDotItem], C.Cowhide, 3, [50, 1000], [2,2]);
+    Result := TryClickATPA(atpa, ['Take Cowhide'], ONE_SECOND*3);
+  end;
+
+  function IsCowhide(): Boolean; // check if cowhide on ground
+  begin
+    Result := (Length(GetColorsInDots([MMDotItem], C.Cowhide, 3, [50, 1000], [2,2])) > 0);
+  end;
+
+  procedure LootMyTile(); // to be called after getting a cowhide
+  var                     // TODO: use minimap detection instead (detect the bit of red next to the player dot on mmap)
+    playerTile: TBox;
+    rp: TPoint := SRL.RandomPoint(Mainscreen.GetPlayerBox());
+    uptext: String;
+    itemCounts: TExtendedArray;
+    itemCount: Integer;
+  begin
+    playerTile := Script.Walker.GetTileMS(Script.Walker.GetMyPos()).Bounds();
+    HumanMMouse(playerTile, RandomRange(10, 30));
+    while Mainscreen.IsUpText(['Raw beef', 'Bones', 'Cowhide']) and not Inventory.IsFull() do begin
+      Mouse.Click(ctRed);
+      Wait(250, 1500);
+    end;
+  end;
+
+  procedure BuryBones();
+  var
+    boneSlots: TIntArray;
+    slot: Integer;
+  begin
+    boneSlots := Inventory.FindAll('bones');
+    for slot in boneSlots do begin
+      Inventory.MouseSlot(slot, mouse_Left);
+      Wait(500, 2000);
+    end;
+  end;
+
+begin
+  if Inventory.IsFull() and (Inventory.Count('Bones') = 0) then begin
+    Exit(True);
+  end else if Inventory.IsFull() and (Inventory.Count('Bones') > 0) then begin
+    BuryBones();
+  end;
+
+  if IsCowhide() then begin
+    ClickCowhide();
+    repeat Wait(200, 400) until not PlayerAnimating();
+    LootMyTile();
+  end else if not InCombat() then begin
+    ClickCow();
+  end;
+end;
+
+
+
+begin
+  Script.Init('/usr/games/runescape --prmfile=oldschool.prm');
+  {Script.Init('/usr/games/runescape --prmfile=oldschool.prm & echo -ne "\n"');}
+  {$include_once player-declarations.simba}
+  Script.LoadMap('world.png');
+  Script.Login();
+
+  while not IsKeyDown(VK_ESCAPE) do begin
+    if IsKeyDown(VK_ENTER) then begin
+      TanningBehavior();
+    end;
+    Wait(50);
+  end;
+end.
